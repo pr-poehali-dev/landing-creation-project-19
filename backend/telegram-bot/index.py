@@ -51,6 +51,10 @@ def handler(event: dict, context) -> dict:
             message = body['message']
             chat_id = message['chat']['id']
             user_text = message.get('text', '').lower().strip()
+            user_name = message.get('from', {}).get('first_name', 'Неизвестный')
+            username = message.get('from', {}).get('username', '')
+            
+            notify_manager(user_name, username, user_text)
             
             response_text = get_response(user_text)
             show_menu = is_greeting(user_text)
@@ -458,6 +462,46 @@ def answer_callback_query(callback_query_id: str):
     
     data = json.dumps({
         'callback_query_id': callback_query_id
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json'}
+    )
+    
+    try:
+        urllib.request.urlopen(req)
+    except Exception:
+        pass
+
+
+def notify_manager(user_name: str, username: str, message: str):
+    '''Отправляет уведомление менеджеру о новом сообщении от клиента'''
+    import urllib.request
+    
+    manager_chat_id = os.environ.get('MANAGER_CHAT_ID')
+    if not manager_chat_id:
+        return
+    
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        return
+    
+    username_text = f'(@{username})' if username else ''
+    notification = f'''🔔 Новое сообщение от клиента!
+
+👤 {user_name} {username_text}
+💬 "{message}"
+
+📞 Ответьте клиенту: https://t.me/{username if username else 'Aginnvl_bot'}'''
+    
+    url = f'https://api.telegram.org/bot{token}/sendMessage'
+    
+    data = json.dumps({
+        'chat_id': manager_chat_id,
+        'text': notification,
+        'parse_mode': 'HTML'
     }).encode('utf-8')
     
     req = urllib.request.Request(
