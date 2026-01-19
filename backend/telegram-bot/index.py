@@ -38,8 +38,9 @@ def handler(event: dict, context) -> dict:
             user_text = message.get('text', '').lower().strip()
             
             response_text = get_response(user_text)
+            show_contact_button = needs_contact_button(user_text)
             
-            send_telegram_message(chat_id, response_text)
+            send_telegram_message(chat_id, response_text, show_contact_button)
             
             return {
                 'statusCode': 200,
@@ -288,7 +289,17 @@ def get_response(user_text: str) -> str:
 Или оставьте заявку на сайте для персональной консультации 👉'''
 
 
-def send_telegram_message(chat_id: int, text: str):
+def needs_contact_button(user_text: str) -> bool:
+    '''Проверяет, нужна ли кнопка связи с менеджером'''
+    contact_keywords = [
+        'контакт', 'связь', 'заказать', 'заказ', 'купить',
+        'подробн', 'детал', 'консультация', 'цена', 'стоимость',
+        'тариф', 'пакет', 'прайс'
+    ]
+    return any(keyword in user_text for keyword in contact_keywords)
+
+
+def send_telegram_message(chat_id: int, text: str, show_button: bool = False):
     '''Отправляет сообщение в Telegram через Bot API'''
     import urllib.request
     
@@ -298,11 +309,23 @@ def send_telegram_message(chat_id: int, text: str):
     
     url = f'https://api.telegram.org/bot{token}/sendMessage'
     
-    data = json.dumps({
+    payload = {
         'chat_id': chat_id,
         'text': text,
         'parse_mode': 'HTML'
-    }).encode('utf-8')
+    }
+    
+    if show_button:
+        payload['reply_markup'] = {
+            'inline_keyboard': [[
+                {
+                    'text': '💬 Связаться с менеджером',
+                    'url': 'https://t.me/a_ginn'
+                }
+            ]]
+        }
+    
+    data = json.dumps(payload).encode('utf-8')
     
     req = urllib.request.Request(
         url,
