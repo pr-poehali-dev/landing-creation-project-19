@@ -32,15 +32,30 @@ def handler(event: dict, context) -> dict:
     if method == 'POST':
         body = json.loads(event.get('body', '{}'))
         
+        if 'callback_query' in body:
+            callback = body['callback_query']
+            chat_id = callback['message']['chat']['id']
+            callback_data = callback['data']
+            
+            response_text = get_callback_response(callback_data)
+            send_telegram_message(chat_id, response_text, False)
+            answer_callback_query(callback['id'])
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'status': 'ok'})
+            }
+        
         if 'message' in body:
             message = body['message']
             chat_id = message['chat']['id']
             user_text = message.get('text', '').lower().strip()
             
             response_text = get_response(user_text)
-            show_contact_button = needs_contact_button(user_text)
+            show_menu = is_greeting(user_text)
             
-            send_telegram_message(chat_id, response_text, show_contact_button)
+            send_telegram_message(chat_id, response_text, show_menu)
             
             return {
                 'statusCode': 200,
@@ -302,18 +317,90 @@ def get_response(user_text: str) -> str:
 Или оставьте заявку на сайте для персональной консультации 👉'''
 
 
-def needs_contact_button(user_text: str) -> bool:
-    '''Проверяет, нужна ли кнопка связи с менеджером'''
-    contact_keywords = [
-        'контакт', 'связь', 'заказать', 'заказ', 'купить',
-        'подробн', 'детал', 'консультация', 'цена', 'стоимость',
-        'тариф', 'пакет', 'прайс'
-    ]
-    return any(keyword in user_text for keyword in contact_keywords)
+def get_callback_response(callback_data: str) -> str:
+    '''Возвращает ответ на нажатие кнопки'''
+    responses = {
+        'prices': '''💰 Наши пакеты услуг:
+
+🟢 СТАРТ — от 30 тыс. ₽
+Лендинг ИЛИ контент-план + инфографика
+Срок: 7 дней
+
+🔵 БИЗНЕС — от 75 тыс. ₽  
+Лендинг + контент + 3 видео + инфографика
+Срок: 10 дней
+
+🟣 ПРО — от 150 тыс. ₽
+Полный комплекс + фотосессия + карточки товаров
+Срок: 14 дней
+
+⭐ ПРЕМИУМ — от 300 тыс. ₽
+Всё включено: лендинг, видео, фото, ассистент, аватар
+Срок: 21 день
+
+📞 Для точного расчёта напишите:
+👉 https://t.me/shipuchka_show''',
+        
+        'services': '''💼 Что я делаю с ИИ для вашего бизнеса:
+
+✨ Продающие ИИ-лендинги (5-7 дней, конверсия 5-12%)
+📊 Презентации для бизнеса (питчдеки, видео)
+📈 Профессиональная инфографика
+📸 ИИ-фотосессия (без фотографа!)
+🛍️ Карточки товаров для маркетплейсов
+🎵 Песни и гимны компании
+✍️ Контент-план на 30-90 дней
+🤖 ИИ-ассистент для клиентов 24/7
+👤 ИИ-аватар руководителя
+🎬 Видео и промо-ролики
+
+Экономия: в 5-10 раз дешевле агентств!''',
+        
+        'process': '''🔄 Процесс работы (10-14 дней):
+
+1️⃣ ДИАГНОСТИКА
+Разбираю нишу, ставлю метрики, согласуем задачу
+
+2️⃣ КОНЦЕПЦИЯ  
+Структура, визуал, тексты → ваша обратная связь
+
+3️⃣ ПРОИЗВОДСТВО
+Генерирую всё на ИИ + ручная доработка
+
+4️⃣ ЗАПУСК
+Внедрение, аналитика, рекомендации по A/B-тестам
+
+⏰ Первые результаты через 2-3 недели!
+
+📞 Готовы начать? Напишите:
+👉 https://t.me/shipuchka_show''',
+        
+        'tools': '''🛠️ Используем передовые ИИ-инструменты:
+
+• Perplexity AI — исследования и анализ
+• HeyGen — ИИ-аватары и видео
+• Google NotebookLM — обработка текстов
+• Freepik — генерация изображений  
+• Nano Banana Pro — фотосессии продуктов
+• Kling 2.6 — видео высокого качества
+
+🚀 Всё самое современное для вашего бизнеса!
+
+❓ Есть вопросы? Пишите:
+👉 https://t.me/shipuchka_show'''
+    }
+    
+    return responses.get(callback_data, 'Выберите интересующую тему из меню!')
 
 
-def send_telegram_message(chat_id: int, text: str, show_button: bool = False):
-    '''Отправляет сообщение в Telegram через Bot API'''
+def is_greeting(user_text: str) -> bool:
+    '''Проверяет, является ли сообщение приветствием'''
+    greetings = ['привет', 'здравствуй', 'добрый', 'start', 'начать', '/start']
+    return any(keyword in user_text for keyword in greetings)
+
+
+def send_telegram_message(chat_id: int, text: str, show_menu: bool = False):
+    '''Отправляет сообщение в Telegram через Bot API с интерактивными кнопками'''
     import urllib.request
     
     token = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -328,17 +415,50 @@ def send_telegram_message(chat_id: int, text: str, show_button: bool = False):
         'parse_mode': 'HTML'
     }
     
-    if show_button:
+    if show_menu:
         payload['reply_markup'] = {
-            'inline_keyboard': [[
-                {
-                    'text': '💬 Связаться с менеджером',
-                    'url': 'https://t.me/a_ginn'
-                }
-            ]]
+            'inline_keyboard': [
+                [
+                    {'text': '💰 Цены и тарифы', 'callback_data': 'prices'},
+                    {'text': '📋 Услуги', 'callback_data': 'services'}
+                ],
+                [
+                    {'text': '🔄 Процесс работы', 'callback_data': 'process'},
+                    {'text': '🛠️ ИИ-инструменты', 'callback_data': 'tools'}
+                ],
+                [
+                    {'text': '📞 Связаться с менеджером', 'url': 'https://t.me/shipuchka_show'}
+                ]
+            ]
         }
     
     data = json.dumps(payload).encode('utf-8')
+    
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json'}
+    )
+    
+    try:
+        urllib.request.urlopen(req)
+    except Exception:
+        pass
+
+
+def answer_callback_query(callback_query_id: str):
+    '''Отвечает на callback запрос (убирает "часики" на кнопке)'''
+    import urllib.request
+    
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        return
+    
+    url = f'https://api.telegram.org/bot{token}/answerCallbackQuery'
+    
+    data = json.dumps({
+        'callback_query_id': callback_query_id
+    }).encode('utf-8')
     
     req = urllib.request.Request(
         url,
