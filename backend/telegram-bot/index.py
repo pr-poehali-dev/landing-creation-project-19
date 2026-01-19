@@ -7,16 +7,26 @@ def handler(event: dict, context) -> dict:
     '''Telegram бот для автоматических ответов посетителям на основе информации с лендинга'''
     
     method = event.get('httpMethod', 'POST')
+    path = event.get('requestContext', {}).get('path', '')
     
     if method == 'OPTIONS':
         return {
             'statusCode': 200,
             'headers': {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type'
             },
             'body': ''
+        }
+    
+    if method == 'GET' and 'setup' in event.get('queryStringParameters', {}):
+        webhook_url = 'https://functions.poehali.dev/8bb85954-50a6-4342-bb36-ed6fdf091dbb'
+        result = setup_webhook(webhook_url)
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps(result)
         }
     
     if method == 'POST':
@@ -301,3 +311,31 @@ def send_telegram_message(chat_id: int, text: str):
         urllib.request.urlopen(req)
     except Exception:
         pass
+
+
+def setup_webhook(webhook_url: str) -> dict:
+    '''Устанавливает webhook для Telegram бота'''
+    import urllib.request
+    
+    token = os.environ.get('TELEGRAM_BOT_TOKEN')
+    if not token:
+        return {'error': 'TELEGRAM_BOT_TOKEN not found'}
+    
+    url = f'https://api.telegram.org/bot{token}/setWebhook'
+    
+    data = json.dumps({
+        'url': webhook_url
+    }).encode('utf-8')
+    
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={'Content-Type': 'application/json'}
+    )
+    
+    try:
+        response = urllib.request.urlopen(req)
+        result = json.loads(response.read().decode('utf-8'))
+        return result
+    except Exception as e:
+        return {'error': str(e)}
