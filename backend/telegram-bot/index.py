@@ -101,7 +101,7 @@ def get_response(user_text: str) -> str:
 "Расскажи про процесс работы"
 
 📞 Или сразу свяжитесь с менеджером для консультации:
-👉 https://t.me/shipuchka_show'''
+👉 https://t.me/a_ginn'''
         },
         
         'цены': {
@@ -282,7 +282,7 @@ def get_response(user_text: str) -> str:
             'response': '''📞 Как связаться и заказать?
 
 🎯 Для консультации и заказа напишите напрямую:
-👉 https://t.me/shipuchka_show
+👉 https://t.me/a_ginn
 
 ✅ Что я предложу:
 • Бесплатный аудит вашей ниши
@@ -339,7 +339,7 @@ def get_callback_response(callback_data: str) -> str:
 Срок: 21 день
 
 📞 Для точного расчёта напишите:
-👉 https://t.me/shipuchka_show''',
+👉 https://t.me/a_ginn''',
         
         'services': '''💼 Что я делаю с ИИ для вашего бизнеса:
 
@@ -373,7 +373,7 @@ def get_callback_response(callback_data: str) -> str:
 ⏰ Первые результаты через 2-3 недели!
 
 📞 Готовы начать? Напишите:
-👉 https://t.me/shipuchka_show''',
+👉 https://t.me/a_ginn''',
         
         'tools': '''🛠️ Используем передовые ИИ-инструменты:
 
@@ -387,7 +387,7 @@ def get_callback_response(callback_data: str) -> str:
 🚀 Всё самое современное для вашего бизнеса!
 
 ❓ Есть вопросы? Пишите:
-👉 https://t.me/shipuchka_show'''
+👉 https://t.me/a_ginn'''
     }
     
     return responses.get(callback_data, 'Выберите интересующую тему из меню!')
